@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Note {
+  id          Int      @id @default(autoincrement())
+  name        String   @default("")
+  content     String   @default("")
+  preview     String   @default("")
+  color       String   @default("#ffffff")
+  pinned      Boolean  @default(false)
+  deleted     Boolean  @default(false)
+  status      String   @default("")
+  tags        String[] @default([])
+  noteType    String   @default("text")
+  drawingData String?
+  images      String[] @default([])
+  folderId    Int?
+  folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Folder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  isSystem  Boolean  @default(false)
+  expanded  Boolean  @default(true)
+  notes     Note[]
+  createdAt DateTime @default(now())
+}
