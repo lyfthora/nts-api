@@ -1,10 +1,6 @@
-import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
+import { prisma } from "../config/database";
 import { CreateFolderInput, UpdateFolderInput } from "../types";
-const connectionString = process.env.DATABASE_URL!;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+
 export const folderService = {
   // get all folders
   async getAll() {
@@ -46,7 +42,7 @@ export const folderService = {
         where: { parentId: toDelete[i] },
         select: { id: true },
       });
-      toDelete.push(...children.map((c) => c.id));
+      toDelete.push(...children.map((c: { id: number }) => c.id));
       i++;
     }
     // Soft-delete
