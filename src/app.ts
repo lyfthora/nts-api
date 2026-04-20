@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { noteRoutes } from "./routes/notes";
 import { folderRoutes } from "./routes/folders";
+import { assetRoutes } from "./routes/assets";
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json({ limit: "10mb" }));
 //routes
 app.use("/api/notes", noteRoutes);
 app.use("/api/folders", folderRoutes);
+app.use("/api/assets", assetRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
