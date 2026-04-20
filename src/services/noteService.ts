@@ -49,9 +49,19 @@ export const noteService = {
     });
   },
   async updateNote(id: number, input: UpdateNoteInput) {
-    const data: Record<string, unknown> = { ...input };
-    if (input.content !== undefined) {
-      data.preview = input.content
+    const data: Record<string, unknown> = {};
+    const validFields = [
+      "name", "content", "preview", "color", "pinned",
+      "deleted", "status", "tags", "noteType", "drawingData",
+      "images", "folderId",
+    ];
+    for (const field of validFields) {
+      if ((input as Record<string, unknown>)[field] !== undefined) {
+        data[field] = (input as Record<string, unknown>)[field];
+      }
+    }
+    if (typeof data.content === "string") {
+      data.preview = (data.content as string)
         .replace(/!\[.*?\]\(.*?\)/g, "")
         .replace(/[#*_`~\[\]]/g, "")
         .trim()
