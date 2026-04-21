@@ -1,12 +1,13 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { noteService } from "../services/noteService";
+
 export const noteRoutes = Router();
 
-// GET /api/notes — Get all notes metadata
-noteRoutes.get("/", async (_req: Request, res: Response): Promise<void> => {
+noteRoutes.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const notes = await noteService.getAllMetadata();
+    const userId = (req as any).userId;
+    const notes = await noteService.getAll(userId);
     res.json(notes);
   } catch (err) {
     console.error("Error fetching notes:", err);
@@ -14,85 +15,93 @@ noteRoutes.get("/", async (_req: Request, res: Response): Promise<void> => {
   }
 });
 
-// GET /api/notes/all — Get all notes and folders
-noteRoutes.get("/all", async (_req: Request, res: Response): Promise<void> => {
+noteRoutes.get("/all", async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = await noteService.getAllData();
+    const userId = (req as any).userId;
+    const data = await noteService.getAllData(userId);
     res.json(data);
   } catch (err) {
     console.error("Error fetching all data:", err);
-    res.status(500).json({ error: "Error fetching data" });
+    res.status(500).json({ error: "Error fetching all data" });
   }
 });
-// GET /api/notes/:id/content — Get note content
+
 noteRoutes.get("/:id/content", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    const data = await noteService.getNoteContent(id);
+    const userId = (req as any).userId;
+    const data = await noteService.getNoteContent(id, userId);
     res.json(data);
   } catch (err) {
     console.error("Error fetching note content:", err);
     res.status(500).json({ error: "Error fetching note content" });
   }
 });
-// POST /api/notes — Create a new note
+
 noteRoutes.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const note = await noteService.createNote(req.body);
+    const userId = (req as any).userId;
+    const note = await noteService.createNote(req.body, userId);
     res.status(201).json(note);
   } catch (err) {
     console.error("Error creating note:", err);
     res.status(500).json({ error: "Error creating note" });
   }
 });
-// PUT /api/notes/:id — Update a note
+
 noteRoutes.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    const note = await noteService.updateNote(id, req.body);
+    const userId = (req as any).userId;
+    const note = await noteService.updateNote(id, req.body, userId);
     res.json(note);
   } catch (err) {
     console.error("Error updating note:", err);
     res.status(500).json({ error: "Error updating note" });
   }
 });
-// DELETE /api/notes/:id — Soft delete (trash)
+
 noteRoutes.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    await noteService.softDelete(id);
+    const userId = (req as any).userId;
+    await noteService.deleteNote(id, userId);
     res.json({ success: true });
   } catch (err) {
     console.error("Error deleting note:", err);
     res.status(500).json({ error: "Error deleting note" });
   }
 });
-// POST /api/notes/:id/restore — Restore from trash
+
 noteRoutes.post("/:id/restore", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    await noteService.restore(id);
+    const userId = (req as any).userId;
+    await noteService.restoreNote(id, userId);
     res.json({ success: true });
   } catch (err) {
     console.error("Error restoring note:", err);
     res.status(500).json({ error: "Error restoring note" });
   }
 });
-// DELETE /api/notes/:id/permanent — Delete permanently
+
 noteRoutes.delete("/:id/permanent", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    await noteService.deletePermanently(id);
+    const userId = (req as any).userId;
+    await noteService.deleteNotePermanently(id, userId);
     res.json({ success: true });
   } catch (err) {
-    console.error("Error permanently deleting note:", err);
-    res.status(500).json({ error: "Error permanently deleting note" });
+    console.error("Error deleting note permanently:", err);
+    res.status(500).json({ error: "Error deleting note permanently" });
   }
 });
-// GET /api/notes/:name/backlinks — Get backlinks
-noteRoutes.get("/:name/backlinks", async (req: Request, res: Response): Promise<void> => {
+
+noteRoutes.get("/:noteName/backlinks", async (req: Request, res: Response): Promise<void> => {
   try {
-    const backlinks = await noteService.getBacklinks(String(req.params.name));
+    const noteName = decodeURIComponent(String(req.params.noteName));
+    const userId = (req as any).userId;
+    const backlinks = await noteService.getBacklinks(noteName, userId);
     res.json(backlinks);
   } catch (err) {
     console.error("Error fetching backlinks:", err);

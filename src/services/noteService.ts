@@ -1,54 +1,85 @@
 import { prisma } from "../config/database";
-import { CreateNoteInput, UpdateNoteInput } from "../types";
 
+interface CreateNoteInput {
+  name?: string;
+  content?: string;
+  preview?: string;
+  color?: string;
+  pinned?: boolean;
+  deleted?: boolean;
+  status?: string;
+  tags?: string[];
+  noteType?: string;
+  drawingData?: string;
+  images?: string[];
+  folderId?: number;
+}
+
+interface UpdateNoteInput {
+  name?: string;
+  content?: string;
+  preview?: string;
+  color?: string;
+  pinned?: boolean;
+  deleted?: boolean;
+  status?: string;
+  tags?: string[];
+  noteType?: string;
+  drawingData?: string;
+  images?: string[];
+  folderId?: number;
+}
 
 export const noteService = {
-  async getAllMetadata() {
+  async getAll(userId: number) {
     return prisma.note.findMany({
-      select: {
-        id: true,
-        name: true,
-        preview: true,
-        color: true,
-        pinned: true,
-        deleted: true,
-        status: true,
-        tags: true,
-        noteType: true,
-        images: true,
-        folderId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      where: { deleted: false, userId },
       orderBy: { updatedAt: "desc" },
+      omit: { content: true, drawingData: true },
     });
   },
-  async getAllData() {
-    const notes = await this.getAllMetadata();
+
+  async getAllData(userId: number) {
+    const notes = await prisma.note.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      omit: { content: true, drawingData: true },
+    });
     const folders = await prisma.folder.findMany({
-      orderBy: { createdAt: "asc" },
+      where: { userId },
     });
     return { notes, folders };
   },
-  async getNoteContent(id: number) {
-    const note = await prisma.note.findUnique({
-      where: { id },
+
+  async getNoteContent(id: number, userId: number) {
+    const note = await prisma.note.findFirst({
+      where: { id, userId },
       select: { content: true, drawingData: true },
     });
     return note || { content: "", drawingData: null };
   },
-  async createNote(input: CreateNoteInput) {
+
+  async createNote(input: CreateNoteInput, userId: number) {
     return prisma.note.create({
       data: {
-        name: input.name ?? "",
-        content: input.content ?? "",
-        color: input.color ?? "#ffffff",
-        noteType: input.noteType ?? "text",
-        folderId: input.folderId ?? null,
+        name: input.name || "",
+        content: input.content || "",
+        preview: input.preview || "",
+        color: input.color || "#ffffff",
+        pinned: input.pinned || false,
+        deleted: input.deleted || false,
+        status: input.status || "",
+        tags: input.tags || [],
+        noteType: input.noteType || "text",
+        drawingData: input.drawingData || null,
+        images: input.images || [],
+        folderId: input.folderId || null,
+        userId,
       },
     });
   },
-  async updateNote(id: number, input: UpdateNoteInput) {
+
+  async updateNote(id: number, input: UpdateNoteInput, userId: number) {
     const data: Record<string, unknown> = {};
     const validFields = [
       "name", "content", "preview", "color", "pinned",
@@ -68,51 +99,43 @@ export const noteService = {
         .substring(0, 150);
     }
     return prisma.note.update({
-      where: { id },
+      where: { id, userId },
       data,
     });
   },
-  async softDelete(id: number) {
+
+  async deleteNote(id: number, userId: number) {
     return prisma.note.update({
-      where: { id },
+      where: { id, userId },
       data: { deleted: true },
     });
   },
-  async restore(id: number) {
+
+  async restoreNote(id: number, userId: number) {
     return prisma.note.update({
-      where: { id },
+      where: { id, userId },
       data: { deleted: false },
     });
   },
 
-  async deletePermanently(id: number) {
+  async deleteNotePermanently(id: number, userId: number) {
     return prisma.note.delete({
-      where: { id },
+      where: { id, userId },
     });
   },
 
-  async getBacklinks(noteName: string) {
+  async getBacklinks(noteName: string, userId: number) {
     const allNotes = await prisma.note.findMany({
-      where: { deleted: false },
-      select: { id: true, name: true, content: true, preview: true },
+      where: { deleted: false, userId },
+      select: { id: true, name: true, content: true },
     });
-    const backlinks: { id: number; name: string; preview: string }[] = [];
-    const regex = /@"([^"]+)"|@(\S+)/g;
-    for (const note of allNotes) {
-      const links: string[] = [];
-      let match;
-      while ((match = regex.exec(note.content)) !== null) {
-        links.push(match[1] || match[2]);
-      }
-      regex.lastIndex = 0;
-      if (links.includes(noteName)) {
-        backlinks.push({
-          id: note.id,
-          name: note.name,
-          preview: note.preview,
-        });
-      }
-    }
-    return backlinks;
+    const pattern = `[[${noteName}]]`;
+    return allNotes
+      .filter((n) => n.content.includes(pattern))
+      .map((n) => ({
+        id: n.id,
+        name: n.name,
+        preview: n.content.substring(0, 100),
+      }));
   },
 };
