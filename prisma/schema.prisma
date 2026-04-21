@@ -24,6 +24,8 @@ model Note {
   folder      Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 model Folder {
@@ -34,4 +36,16 @@ model Folder {
   expanded  Boolean  @default(true)
   notes     Note[]
   createdAt DateTime @default(now())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  notes     Note[]
+  folders   Folder[]
 }
