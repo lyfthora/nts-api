@@ -3,20 +3,26 @@ import cors from "cors";
 import { noteRoutes } from "./routes/notes";
 import { folderRoutes } from "./routes/folders";
 import { assetRoutes } from "./routes/assets";
+import { authRoutes } from "./routes/auth";
+import { authMiddleware } from "./middleware/auth";
 
 const app = express();
 
-//middleware
+// middleware
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-//routes
-app.use("/api/notes", noteRoutes);
-app.use("/api/folders", folderRoutes);
-app.use("/api/assets", assetRoutes);
+// auth routes
+app.use("/api/auth", authRoutes);
 
-// Health check
+// protected routes
+app.use("/api/notes", authMiddleware, noteRoutes);
+app.use("/api/folders", authMiddleware, folderRoutes);
+app.use("/api/assets", authMiddleware, assetRoutes);
+
+// check
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
 export default app;
