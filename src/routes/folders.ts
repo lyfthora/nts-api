@@ -3,42 +3,46 @@ import type { Request, Response } from "express";
 import { folderService } from "../services/folderService";
 
 export const folderRoutes = Router();
-// get /api/folders -- get all folders
-folderRoutes.get("/", async (_req: Request, res: Response): Promise<void> => {
+
+folderRoutes.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const folders = await folderService.getAll();
+    const userId = (req as any).userId;
+    const folders = await folderService.getAll(userId);
     res.json(folders);
   } catch (err) {
     console.error("Error fetching folders:", err);
     res.status(500).json({ error: "Error fetching folders" });
   }
 });
-// post /api/folders -- create folder
+
 folderRoutes.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const folder = await folderService.create(req.body);
+    const userId = (req as any).userId;
+    const folder = await folderService.create(req.body, userId);
     res.status(201).json(folder);
   } catch (err) {
     console.error("Error creating folder:", err);
     res.status(500).json({ error: "Error creating folder" });
   }
 });
-// put /api/folders/:id -- update folder
+
 folderRoutes.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    const folder = await folderService.update(id, req.body);
+    const userId = (req as any).userId;
+    const folder = await folderService.update(id, req.body, userId);
     res.json(folder);
   } catch (err) {
     console.error("Error updating folder:", err);
     res.status(500).json({ error: "Error updating folder" });
   }
 });
-// delete /api/folders/:id -- delete folder
+
 folderRoutes.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(String(req.params.id), 10);
-    await folderService.delete(id);
+    const userId = (req as any).userId;
+    await folderService.delete(id, userId);
     res.json({ success: true });
   } catch (err) {
     console.error("Error deleting folder:", err);
