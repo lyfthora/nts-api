@@ -35,7 +35,21 @@ export const noteService = {
     return prisma.note.findMany({
       where: { deleted: false, userId },
       orderBy: { updatedAt: "desc" },
-      omit: { content: true, drawingData: true },
+      select: {
+        id: true,
+        name: true,
+        preview: true,
+        color: true,
+        pinned: true,
+        deleted: true,
+        status: true,
+        tags: true,
+        noteType: true,
+        images: true,
+        folderId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   },
 
@@ -43,7 +57,21 @@ export const noteService = {
     const notes = await prisma.note.findMany({
       where: { userId },
       orderBy: { updatedAt: "desc" },
-      omit: { content: true, drawingData: true },
+      select: {
+        id: true,
+        name: true,
+        preview: true,
+        color: true,
+        pinned: true,
+        deleted: true,
+        status: true,
+        tags: true,
+        noteType: true,
+        images: true,
+        folderId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     const folders = await prisma.folder.findMany({
       where: { userId },
