@@ -41,11 +41,13 @@ model Folder {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-  notes     Note[]
-  folders   Folder[]
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String?
+  name       String?
+  provider   String   @default("local")
+  providerId String?
+  createdAt  DateTime @default(now())
+  notes      Note[]
+  folders    Folder[]
 }
