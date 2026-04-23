@@ -5,12 +5,14 @@ import { folderRoutes } from "./routes/folders";
 import { assetRoutes } from "./routes/assets";
 import { authRoutes } from "./routes/auth";
 import { authMiddleware } from "./middleware/auth";
-
+import passport from "passport";
+import "./config/passport";
 const app = express();
 
 // middleware
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+app.use(passport.initialize());
 
 // auth routes
 app.use("/api/auth", authRoutes);
