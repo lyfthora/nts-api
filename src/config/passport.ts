@@ -8,7 +8,7 @@ passport.use(
     {
       clientID: config.githubClientId,
       clientSecret: config.githubClientSecret,
-      callbackURL: "https://nts-api-production.up.railway.app/api/auth/github/callback",
+      callbackURL: config.githubCallbackUrl,
       scope: ["user:email"],
     },
     async (
