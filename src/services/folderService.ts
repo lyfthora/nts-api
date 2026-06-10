@@ -30,13 +30,29 @@ export const folderService = {
   },
 
   async delete(id: number, userId: number) {
+    const getAllDescendantFolderIds = async (parentId: number): Promise<number[]> => {
+      const children = await prisma.folder.findMany({
+        where: { parentId, userId },
+        select: { id: true },
+      });
+      const ids: number[] = [];
+      for (const child of children) {
+        ids.push(child.id);
+        ids.push(...(await getAllDescendantFolderIds(child.id)));
+      }
+      return ids;
+    };
+    const descendantIds = await getAllDescendantFolderIds(id);
+    const allFolderIds = [id, ...descendantIds];
     await prisma.note.updateMany({
-      where: { folderId: id, userId },
-      data: { folderId: null },
+      where: { folderId: { in: allFolderIds }, userId },
+      data: { deleted: true, folderId: null },
     });
-    await prisma.folder.deleteMany({
-      where: { parentId: id, userId },
-    });
+    if (descendantIds.length > 0) {
+      await prisma.folder.deleteMany({
+        where: { id: { in: descendantIds }, userId },
+      });
+    }
     return prisma.folder.delete({
       where: { id, userId },
     });
