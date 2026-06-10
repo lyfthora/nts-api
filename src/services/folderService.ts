@@ -2,7 +2,10 @@ import { prisma } from "../config/database";
 
 export const folderService = {
   async getAll(userId: number) {
-    return prisma.folder.findMany({ where: { userId } });
+    return prisma.folder.findMany({
+      where: { userId},
+      orderBy: { id: 'asc'},
+    });
   },
 
   async create(data: { name: string; parentId?: number | null }, userId: number) {
