@@ -31,3 +31,10 @@ export interface UpdateFolderInput {
   parentId?: number | null;
   expanded?: boolean;
 }
+
+export interface SubscriptionStatus {
+  status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | "expired";
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+}
