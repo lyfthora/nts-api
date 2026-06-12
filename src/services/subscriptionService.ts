@@ -3,6 +3,8 @@ import { prisma } from "../config/database";
 import { config } from "../config/env";
 import { SubscriptionStatus } from "../types";
 
+type StripeEvent = any;
+type StripeSubscription = any;
 const stripe = new Stripe(config.stripeSecretKey, {
   apiVersion: "2026-05-27.dahlia" as any,
 });
@@ -11,7 +13,7 @@ export const subscriptionService = {
 async getSubscriptionStatus(userId: number): Promise<SubscriptionStatus> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { subscription: true},
+    select: { subscription: true, trialEndsAt: true},
   });
     if (!user) throw new Error("User not found");
 
@@ -21,7 +23,7 @@ async getSubscriptionStatus(userId: number): Promise<SubscriptionStatus> {
      if (user.subscription) {
       const isExpired = user.subscription.status === "canceled" &&
                         user.subscription.currentPeriodEnd &&
-                        user.subcription.currentPeriodEnd < now;
+                        user.subscription.currentPeriodEnd < now;
       if (!isExpired) {
         return {
           status: user.subscription.status as any,
@@ -102,7 +104,7 @@ async createCheckoutSession(userId: number) {
 
   // event webhooks stripe
   async handleWebhookEvent(payload: string | Buffer, signature: string) {
-    let event: Stripe.Event;
+    let event: any;
     try {
       event = stripe.webhooks.constructEvent(
         payload,
@@ -112,7 +114,7 @@ async createCheckoutSession(userId: number) {
     } catch (err: any) {
       throw new Error(`Webhook signature verification failed: ${err.message}`);
     }
-    const subscription = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as any;
     const customerId = subscription.customer as string;
     switch (event.type) {
       case "checkout.session.completed":
@@ -131,7 +133,7 @@ async createCheckoutSession(userId: number) {
     }
   },
 
-  async syncSubscription(stripeSub: Stripe.Subscription) {
+  async syncSubscription(stripeSub: any) {
     const customerId = stripeSub.customer as string;
     const user = await prisma.user.findFirst({
       where: { stripeCustomerId: customerId },
