@@ -50,4 +50,20 @@ model User {
   createdAt  DateTime @default(now())
   notes      Note[]
   folders    Folder[]
+  stripeCustomerId String?   @unique
+  trialEndsAt      DateTime?
+  subscription     Subscription?
+}
+
+model Subscription {
+  id                   Int      @id @default(autoincrement())
+  userId               Int      @unique
+  user                 User     @relation(fields: [userId], references: [id])
+  stripeSubscriptionId String   @unique
+  status               String   @default("trialing")
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
