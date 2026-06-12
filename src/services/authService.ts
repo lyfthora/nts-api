@@ -12,7 +12,12 @@ export const authService = {
     }
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, name },
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      },
     });
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "7d",
@@ -65,6 +70,7 @@ async findOrCreateOAuthUser(profile: {
             name: profile.name,
             provider: profile.provider,
             providerId: profile.providerId,
+            trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
           },
         });
       }
