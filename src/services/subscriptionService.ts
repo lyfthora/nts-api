@@ -3,6 +3,25 @@ import { prisma } from "../config/database";
 import { config } from "../config/env";
 import { SubscriptionStatus } from "../types";
 
+type StripeCheckoutSession = {
+  customer?: string | null;
+  subscription?: string | null;
+  metadata?: Record<string, string> | null;
+};
+
+type StripeSubscriptionRecord = {
+  id: string;
+  customer?: string | { id: string } | null;
+  status: string;
+  cancel_at_period_end: boolean;
+  items: {
+    data: Array<{
+      current_period_start?: number | null;
+      current_period_end?: number | null;
+    }>;
+  };
+};
+
 let stripeClient: ReturnType<typeof createStripeClient> | null = null;
 
 function createStripeClient() {
@@ -113,10 +132,22 @@ export const subscriptionService = {
 
   async createPortalSession(userId: number) {
     const stripe = getStripeClient();
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.stripeCustomerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        stripeCustomerId: true,
+        subscription: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.stripeCustomerId || !user.subscription) {
       throw new Error("No active subscription found to manage");
     }
+
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: config.frontendUrl,
@@ -141,46 +172,96 @@ export const subscriptionService = {
     } catch (err: any) {
       throw new Error(`Webhook signature verification failed: ${err.message}`);
     }
-    const subscription = event.data.object as any;
-    const customerId = subscription.customer as string;
+
     switch (event.type) {
-      case "checkout.session.completed":
+      case "checkout.session.completed": {
+        const session = event.data.object as StripeCheckoutSession;
+        await this.syncCheckoutSession(session);
+        break;
+      }
       case "customer.subscription.created":
-      case "customer.subscription.updated":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as StripeSubscriptionRecord;
         await this.syncSubscription(subscription);
         break;
-      case "customer.subscription.deleted":
+      }
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as StripeSubscriptionRecord;
         await prisma.subscription.deleteMany({
           where: { stripeSubscriptionId: subscription.id },
         });
         break;
+      }
       case "invoice.payment_failed":
         // añadir luego ocmo una notif para el user de que su pago falloi o algo asi xd
         break;
     }
   },
 
-  async syncSubscription(stripeSub: any) {
-    const customerId = stripeSub.customer as string;
+  async syncCheckoutSession(session: StripeCheckoutSession) {
+    const userId = Number(session.metadata?.userId);
+    const customerId =
+      typeof session.customer === "string" ? session.customer : null;
+
+    if (!userId || !customerId) {
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { stripeCustomerId: customerId },
+    });
+
+    if (typeof session.subscription === "string") {
+      const stripe = getStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(
+        session.subscription,
+      );
+      await this.syncSubscription(subscription);
+    }
+  },
+
+  async syncSubscription(stripeSub: StripeSubscriptionRecord) {
+    const customerId =
+      typeof stripeSub.customer === "string"
+        ? stripeSub.customer
+        : stripeSub.customer?.id || null;
+
+    if (!customerId) {
+      return;
+    }
+
     const user = await prisma.user.findFirst({
       where: { stripeCustomerId: customerId },
     });
-    if (!user) return;
+
+    if (!user) {
+      return;
+    }
+
     await prisma.subscription.upsert({
       where: { userId: user.id },
       create: {
         userId: user.id,
         stripeSubscriptionId: stripeSub.id,
         status: stripeSub.status,
-        currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+        currentPeriodStart: stripeSub.items.data[0]?.current_period_start
+          ? new Date(stripeSub.items.data[0].current_period_start * 1000)
+          : null,
+        currentPeriodEnd: stripeSub.items.data[0]?.current_period_end
+          ? new Date(stripeSub.items.data[0].current_period_end * 1000)
+          : null,
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
       },
       update: {
         stripeSubscriptionId: stripeSub.id,
         status: stripeSub.status,
-        currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+        currentPeriodStart: stripeSub.items.data[0]?.current_period_start
+          ? new Date(stripeSub.items.data[0].current_period_start * 1000)
+          : null,
+        currentPeriodEnd: stripeSub.items.data[0]?.current_period_end
+          ? new Date(stripeSub.items.data[0].current_period_end * 1000)
+          : null,
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
       },
     });
