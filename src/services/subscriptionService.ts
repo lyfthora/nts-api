@@ -3,32 +3,48 @@ import { prisma } from "../config/database";
 import { config } from "../config/env";
 import { SubscriptionStatus } from "../types";
 
-type StripeEvent = any;
-type StripeSubscription = any;
-const stripe = new Stripe(config.stripeSecretKey, {
-  apiVersion: "2026-05-27.dahlia" as any,
-});
+let stripeClient: ReturnType<typeof createStripeClient> | null = null;
+
+function createStripeClient() {
+  return new Stripe(config.stripeSecretKey, {
+    apiVersion: "2026-05-27.dahlia" as any,
+  });
+}
+
+function getStripeClient() {
+  if (!config.stripeSecretKey) {
+    throw new Error("Stripe is not configured");
+  }
+
+  if (!stripeClient) {
+    stripeClient = createStripeClient();
+  }
+
+  return stripeClient;
+}
 
 export const subscriptionService = {
-async getSubscriptionStatus(userId: number): Promise<SubscriptionStatus> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { subscription: true, trialEndsAt: true},
-  });
+  async getSubscriptionStatus(userId: number): Promise<SubscriptionStatus> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscription: true, trialEndsAt: true },
+    });
     if (!user) throw new Error("User not found");
 
-     const now = new Date();
+    const now = new Date();
 
-     // 1. check subscription active in ddbb
-     if (user.subscription) {
-      const isExpired = user.subscription.status === "canceled" &&
-                        user.subscription.currentPeriodEnd &&
-                        user.subscription.currentPeriodEnd < now;
+    // 1. check subscription active in ddbb
+    if (user.subscription) {
+      const isExpired =
+        user.subscription.status === "canceled" &&
+        user.subscription.currentPeriodEnd &&
+        user.subscription.currentPeriodEnd < now;
       if (!isExpired) {
         return {
           status: user.subscription.status as any,
           trialEndsAt: user.trialEndsAt?.toISOString() || null,
-          currentPeriodEnd: user.subscription.currentPeriodEnd?.toISOString() || null,
+          currentPeriodEnd:
+            user.subscription.currentPeriodEnd?.toISOString() || null,
           cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
         };
       }
@@ -50,28 +66,33 @@ async getSubscriptionStatus(userId: number): Promise<SubscriptionStatus> {
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
     };
-},
+  },
 
-// create stripe session checkout for initial payment
-async createCheckoutSession(userId: number) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new Error("User not found");
+  // create stripe session checkout for initial payment
+  async createCheckoutSession(userId: number) {
+    if (!config.stripePriceId) {
+      throw new Error("Stripe checkout is not configured");
+    }
 
-  let customerId = user.stripeCustomerId;
+    const stripe = getStripeClient();
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
 
-  if(!customerId){
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: { userId: user.id.toString()},
-    });
-    customerId = customer.id;
-    await prisma.user.update({
-      where: { id: user.id},
-      data: { stripeCustomerId: customerId},
-    });
-  }
+    let customerId = user.stripeCustomerId;
 
-  const session = await stripe.checkout.sessions.create({
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId: user.id.toString() },
+      });
+      customerId = customer.id;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customerId },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [
@@ -91,6 +112,7 @@ async createCheckoutSession(userId: number) {
   },
 
   async createPortalSession(userId: number) {
+    const stripe = getStripeClient();
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.stripeCustomerId) {
       throw new Error("No active subscription found to manage");
@@ -104,12 +126,17 @@ async createCheckoutSession(userId: number) {
 
   // event webhooks stripe
   async handleWebhookEvent(payload: string | Buffer, signature: string) {
+    if (!config.stripeWebhookSecret) {
+      throw new Error("Stripe webhook is not configured");
+    }
+
+    const stripe = getStripeClient();
     let event: any;
     try {
       event = stripe.webhooks.constructEvent(
         payload,
         signature,
-        config.stripeWebhookSecret
+        config.stripeWebhookSecret,
       );
     } catch (err: any) {
       throw new Error(`Webhook signature verification failed: ${err.message}`);
@@ -159,6 +186,3 @@ async createCheckoutSession(userId: number) {
     });
   },
 };
-
-
-
