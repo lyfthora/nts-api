@@ -130,7 +130,7 @@ export const subscriptionService = {
     return { url: session.url };
   },
 
-  async createPortalSession(userId: number) {
+  async createPortalSession(userId: number, returnUrl: string) {
     const stripe = getStripeClient();
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -150,7 +150,7 @@ export const subscriptionService = {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: config.frontendUrl,
+      return_url: returnUrl,
     });
     return { url: session.url };
   },
