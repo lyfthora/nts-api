@@ -5,7 +5,7 @@ import { folderRoutes } from "./routes/folders";
 import { assetRoutes } from "./routes/assets";
 import { authRoutes } from "./routes/auth";
 import { authMiddleware } from "./middleware/auth";
-import { subscriptionRoutes, stripeWebhookRoute } from "./routes/subscription";
+import { subscriptionRoutes, stripeWebhookRoute, publicSubscriptionRoutes } from "./routes/subscription";
 import { subscriptionMiddleware } from "./middleware/subscriptionMiddleware";
 import passport from "passport";
 import "./config/passport";
@@ -21,6 +21,9 @@ app.use(passport.initialize());
 
 // auth routes
 app.use("/api/auth", authRoutes);
+
+// subscription public routes
+app.use("/api/subscription", publicSubscriptionRoutes);
 
 // subscription routes
 app.use("/api/subscription", authMiddleware, subscriptionRoutes);
