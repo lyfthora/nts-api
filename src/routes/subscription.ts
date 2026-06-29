@@ -33,6 +33,46 @@ function getErrorResponse(err: unknown): {
 
 export const subscriptionRoutes = Router();
 export const stripeWebhookRoute = Router();
+export const publicSubscriptionRoutes = Router();
+
+// GET /api/subscription/portal-return
+publicSubscriptionRoutes.get("/portal-return", (req: Request, res: Response) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Redirecting to NTS...</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          margin: 0;
+          background: #121212;
+          color: #fff;
+        }
+        .container { text-align: center; }
+        h1 { font-size: 20px; font-weight: 500; margin-bottom: 10px; }
+        p { color: #888; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Opening NTS in desktop...</h1>
+        <p>If your browser didn't open the app automatically, you can safely close this window.</p>
+      </div>
+      <script>
+        window.location.href = "nts://payment-success";
+        setTimeout(function() {
+          window.close();
+        }, 3000);
+      </script>
+    </body>
+    </html>
+  `);
+});
 
 // GET /api/subscription/status
 subscriptionRoutes.get("/status", async (req: any, res: Response) => {
@@ -59,7 +99,11 @@ subscriptionRoutes.post("/checkout", async (req: any, res: Response) => {
 // POST /api/subscription/portal
 subscriptionRoutes.post("/portal", async (req: any, res: Response) => {
   try {
-    const result = await subscriptionService.createPortalSession(req.userId);
+    const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+    const host = req.get("host");
+    const returnUrl = `${protocol}://${host}/api/subscription/portal-return`;
+
+    const result = await subscriptionService.createPortalSession(req.userId, returnUrl);
     res.json(result);
   } catch (err: unknown) {
     const { status, body } = getErrorResponse(err);
