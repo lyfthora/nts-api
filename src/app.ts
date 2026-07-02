@@ -29,9 +29,9 @@ app.use("/api/subscription", publicSubscriptionRoutes);
 app.use("/api/subscription", authMiddleware, subscriptionRoutes);
 
 // protected routes
-app.use("/api/notes", authMiddleware, subscriptionMiddleware, noteRoutes);
-app.use("/api/folders", authMiddleware, subscriptionMiddleware, folderRoutes);
-app.use("/api/assets", authMiddleware, subscriptionMiddleware, assetRoutes);
+app.use("/api/notes", authMiddleware, noteRoutes);
+app.use("/api/folders", authMiddleware, folderRoutes);
+app.use("/api/assets", authMiddleware, assetRoutes);
 
 // check
 app.get("/api/health", (_req, res) => {
