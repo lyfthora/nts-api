@@ -11,7 +11,7 @@ assetRoutes.post("/upload", async (req: Request, res: Response): Promise<void> =
       res.status(400).json({ error: "Missing fileBuffer, fileName or noteId"});
       return;
     }
-    const buffer = Buffer.from(fileBuffer);
+    const buffer = Buffer.from(fileBuffer, "base64");
     const url = await assetService.upload(buffer, fileName, noteId);
     res.json({ url});
   } catch (err) {
