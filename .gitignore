@@ -1,6 +1,7 @@
 .env
 node_modules/
 .agent
+.agents
 dist
 dist/
 build/
@@ -21,3 +22,13 @@ playwright-report/
 test-data-*
 
 /src/generated/prisma
+#net
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+#net crash/dumps
+*.suo
+*.userprefs
