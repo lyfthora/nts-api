@@ -1,6 +1,10 @@
-@Nts.Api_HostAddress = http://localhost:5239
-
-GET {{Nts.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
+@Nts.Api_HostAddress = http://localhost:3001
+### Probar Swagger
+GET {{Nts.Api_HostAddress}}/swagger/index.html
+### Probar Login
+POST {{Nts.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+{
+  "email": "test@example.com",
+  "password": "Password123!"
+}
