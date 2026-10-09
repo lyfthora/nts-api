@@ -1,10 +1,62 @@
-@Nts.Api_HostAddress = http://localhost:3001
-### Probar Swagger
-GET {{Nts.Api_HostAddress}}/swagger/index.html
-### Probar Login
-POST {{Nts.Api_HostAddress}}/api/auth/login
+@baseUrl = http://localhost:3001
+
+### 0. Registrar el usuario (solo la primera vez)
+POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Password123!",
+  "name": "Mi Usuario"
+}
+
+
+
+### 1. Iniciar sesión para obtener el JWT
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
 {
   "email": "test@example.com",
   "password": "Password123!"
 }
+
+### 2. Listar carpetas
+GET {{baseUrl}}/api/folders
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 3. Crear una nueva carpeta
+# @name createFolder
+POST {{baseUrl}}/api/folders
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Proyectos 2026"
+}
+
+### 4. Crear una nota dentro de la carpeta
+POST {{baseUrl}}/api/notes
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Mi primera nota C#",
+  "content": "# Hola Mundo\nEste es el contenido completo de la nota con un enlace a [[NotaDestino]]",
+  "color": "#e0f2fe",
+  "pinned": true,
+  "folderId": {{createFolder.response.body.$.id}}
+}
+
+### 5. Carga inicial del frontend (notas completas sin el campo pesado content)
+GET {{baseUrl}}/api/notes/all
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 6. Cargar el contenido bajo demanda
+GET {{baseUrl}}/api/notes/1/content
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 7. Probar búsqueda de Backlinks
+GET {{baseUrl}}/api/notes/NotaDestino/backlinks
+Authorization: Bearer {{login.response.body.$.token}}

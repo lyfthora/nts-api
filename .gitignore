@@ -32,3 +32,5 @@ test-data-*
 #net crash/dumps
 *.suo
 *.userprefs
+#graphify
+graphify-out/
