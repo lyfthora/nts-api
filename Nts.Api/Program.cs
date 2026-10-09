@@ -22,7 +22,7 @@ builder.Services.AddSingleton<TokenService>();
 // JWT Authentication
 var jwtSecret = builder.Configuration["JWT_SECRET"]
     ?? Environment.GetEnvironmentVariable("JWT_SECRET")
-    ?? "fallback_secret";
+    ?? "super_secret_jwt_key_nts_2026_at_least_32_chars!";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

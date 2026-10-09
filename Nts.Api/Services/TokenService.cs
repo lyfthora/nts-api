@@ -14,7 +14,7 @@ public class TokenService
     {
         _secret = configuration["JWT_SECRET"]
             ?? Environment.GetEnvironmentVariable("JWT_SECRET")
-            ?? "fallback_secret";
+            ?? "super_secret_jwt_key_nts_2026_at_least_32_chars!";
     }
 
     /// <summary>
