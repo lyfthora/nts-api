@@ -18,6 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddSingleton<R2Service>();
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["JWT_SECRET"]
