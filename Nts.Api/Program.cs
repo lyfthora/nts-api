@@ -5,6 +5,20 @@ using Microsoft.IdentityModel.Tokens;
 using Nts.Api.Models.Entities;
 using Nts.Api.Services;
 
+var envFile = File.Exists(".env") ? ".env" : File.Exists("../.env") ? "../.env" : null;
+if (envFile != null)
+{
+    foreach (var line in File.ReadAllLines(envFile))
+    {
+        var trimmed = line.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
+        var parts = trimmed.Split('=', 2);
+        if (parts.Length == 2)
+        {
+            Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim().Trim('"'));
+        }
+    }
+}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -19,6 +33,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<R2Service>();
+builder.Services.AddSingleton<StripeService>();
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["JWT_SECRET"]
@@ -72,6 +87,15 @@ app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/webhook/stripe"))
+    {
+        context.Request.EnableBuffering();
+    }
+    await next();
+});
 
 app.MapControllers();
 
