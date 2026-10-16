@@ -1,0 +1,9 @@
+**/.git
+**/.vscode
+**/.agents
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.env
+Dockerfiles
