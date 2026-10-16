@@ -24,9 +24,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    var rawConnection = Environment.GetEnvironmentVariable("DATABASE_URL")
         ?? builder.Configuration["DATABASE_URL"]
-        ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+        ?? builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "";
+
+    string connectionString = rawConnection;
+    if (rawConnection.StartsWith("postgres://") || rawConnection.StartsWith("postgresql://"))
+    {
+        var uri = new Uri(rawConnection);
+        var userInfo = uri.UserInfo.Split(':');
+        var user = userInfo.Length > 0 ? userInfo[0] : "";
+        var pass = userInfo.Length > 1 ? userInfo[1] : "";
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+        connectionString = $"Host={uri.Host};Port={port};Database={database};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
+    }
 
     options.UseNpgsql(connectionString);
 });
