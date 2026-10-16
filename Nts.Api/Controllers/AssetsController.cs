@@ -8,13 +8,12 @@ using Nts.Api.Services;
 
 [ApiController]
 [Authorize]
-[Route("api/asset")]
+[Route("api/assets")]
 public class AssetsController : ControllerBase
 
 {
     private readonly AppDbContext _db;
     private readonly R2Service _r2;
-
     public AssetsController(AppDbContext db, R2Service r2)
     {
         _db = db;
@@ -25,24 +24,17 @@ public class AssetsController : ControllerBase
         var claim = User.FindFirst("userId")?.Value;
         return int.TryParse(claim, out var id) ? id : 0;
     }
-
-
-    // post /api/assets/upload?noteId=1
+    // POST /api/assets/upload
     [HttpPost("upload")]
-    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] int noteId)
+    public async Task<IActionResult> Upload([FromBody] UploadAssetRequest request)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest(new { error = "no file provided" });
-
-        var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == noteId && n.UserId == GetUserId());
+        if (string.IsNullOrEmpty(request.FileBuffer) || string.IsNullOrEmpty(request.FileName) || request.NoteId <= 0)
+            return BadRequest(new { error = "Missing fileBuffer, fileName or noteId" });
+        var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == request.NoteId && n.UserId == GetUserId());
         if (note == null)
             return NotFound(new { error = "Note not found" });
-
-        using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
-        var fileBytes = ms.ToArray();
-
-        var url = await _r2.UploadAsync(fileBytes, file.FileName, noteId);
+        var fileBytes = Convert.FromBase64String(request.FileBuffer);
+        var url = await _r2.UploadAsync(fileBytes, request.FileName, request.NoteId);
         return Ok(new { url });
     }
 
@@ -74,4 +66,10 @@ public class CleanRequest
     public int NoteId { get; set; }
     public List<string>? CurrentImages { get; set; }
     public List<string>? ReferencedImages { get; set; }
+}
+public class UploadAssetRequest
+{
+    public string FileBuffer { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public int NoteId { get; set; }
 }
