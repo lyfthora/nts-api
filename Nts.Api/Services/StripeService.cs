@@ -127,7 +127,7 @@ public class StripeService
     {
         var webhookSecret = GetWebhookSecret();
         if (string.IsNullOrEmpty(webhookSecret)) throw new Exception("Stripe webhook is not configured");
-        var stripeEvent = EventUtility.ConstructEvent(payload, signature, webhookSecret);
+        var stripeEvent = EventUtility.ConstructEvent(payload, signature, webhookSecret, throwOnApiVersionMismatch: false);
         switch (stripeEvent.Type)
         {
             case EventTypes.CheckoutSessionCompleted:
