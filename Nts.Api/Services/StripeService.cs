@@ -69,6 +69,7 @@ public class StripeService
         var user = await db.Users.FindAsync(userId);
         if (user == null) throw new Exception("user not found");
         var customerId = user.StripeCustomerId;
+
         //create customer if not exist yet
         if (string.IsNullOrEmpty(customerId))
         {
@@ -88,6 +89,8 @@ public class StripeService
         var session = await sessionService.CreateAsync(new SessionCreateOptions
         {
             Customer = customerId,
+            ClientReferenceId = user.Id.ToString(),
+            Metadata = new Dictionary<string, string> { { "userId", user.Id.ToString() } },
             LineItems = new List<SessionLineItemOptions>
             {
                 new() { Price = priceId, Quantity = 1}
@@ -161,24 +164,39 @@ public class StripeService
     }
     private async Task SyncCheckoutSession(AppDbContext db, Stripe.Checkout.Session session)
     {
-        var userIdStr = session.Metadata?.GetValueOrDefault("userId");
-        if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out var userId))
-            return;
-
         var customerId = session.CustomerId;
         if (string.IsNullOrEmpty(customerId)) return;
-
-        var user = await db.Users.FindAsync(userId);
-        if (user == null) return;
-
-        user.StripeCustomerId = customerId;
-        await db.SaveChangesAsync();
-
+        User? user = null;
+        // 1. Intentar por Metadata de la sesión o ClientReferenceId
+        var userIdStr = session.Metadata?.GetValueOrDefault("userId") ?? session.ClientReferenceId;
+        if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out var userId))
+        {
+            user = await db.Users.FindAsync(userId);
+        }
+        // 2. Si no, buscar por StripeCustomerId que ya tenía el usuario
+        if (user == null)
+        {
+            user = await db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == customerId);
+        }
+        // 3. Obtener la suscripción de Stripe
         if (!string.IsNullOrEmpty(session.SubscriptionId))
         {
             var subService = new SubscriptionService();
             var stripeSub = await subService.GetAsync(session.SubscriptionId);
+            // Si aún no encontramos el user, buscar en los metadatos de la suscripción
+            if (user == null && stripeSub?.Metadata != null && stripeSub.Metadata.TryGetValue("userId", out var subUid) && int.TryParse(subUid, out var uid))
+            {
+                user = await db.Users.FindAsync(uid);
+            }
+            if (user == null) return;
+            user.StripeCustomerId = customerId;
+            await db.SaveChangesAsync();
             await SyncSubscription(db, stripeSub);
+        }
+        else if (user != null)
+        {
+            user.StripeCustomerId = customerId;
+            await db.SaveChangesAsync();
         }
     }
     private async Task SyncSubscription(AppDbContext db, Stripe.Subscription stripeSub)
